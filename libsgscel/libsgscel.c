@@ -1,130 +1,88 @@
-//Generate by python.
-/**
- * @file
- * @brief
- *
- * @details 
- * @author  
- * @date    
- * @version 
- *
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include "libsgscel_inl.h"
 #include "libsgscel.h"
 
 ///////////////////////////////////////////////////////////////////////////
-//Helpher interface declare
-///Print string and rip '\r'
-void helpher_puts(uint8_t* str);
+#define ENDIAN_B2E_U16(u16) \
+    ((((u16) & 0x00FFu) << 8) | (((u16) & 0xFF00u) >> 8))
 
 ///Convert pinyin id array to pinyin string
-void helpher_convert_pinyin_ids_to_string(
-        pinyin_list* lppinyin_list,
+static void _decoder_pinyin_id_to_str(
+        const sgscel_pinyin_lookup_list_t* pinyins_tables,
         uint16_t* pinyin_ids,
         uint16_t size, 
         uint8_t* out);
 
 ///Convert unicode wchar_t to utf-8 chars
-int helpher_ucs2_to_utf8_char(
+static int _encoder_ucs2_to_utf8(
         unsigned short in,
         unsigned char * out);
 
 ///Convert unicode string to utf-8 string
-int helpher_ucs2_to_utf8_str(
+static int _encoder_ucs2str_to_utf8str(
         uint8_t* in, 
         int insize,
         uint8_t * out);
 
 ///Read uint8_t from file
-int helpher_fread_u8(uint8_t* u8, FILE* fp);
+static int _fread_u8(uint8_t* u8, FILE* fp);
 
 ///Read uint16_t from file
-int helpher_fread_u16(uint16_t* u16, FILE* fp);
+static int _fread_u16(uint16_t* u16, FILE* fp);
 
 ///Read uint8_t * size from file
-int helpher_fread_str(uint8_t* str, uint16_t size, FILE* fp);
+static int _fread_str(uint8_t* str, uint16_t size, FILE* fp);
+
+static sgscel_pinyin_lookup_list_t* _load_pinyin_list(FILE* fp);
+static void _pinyin_list_destroy(sgscel_pinyin_lookup_list_t* root);
+
+static sgscel_word_t* _load_words(FILE* fp, const sgscel_pinyin_lookup_list_t* lppinyin_list);
 
 ///////////////////////////////////////////////////////////////////////////
-//Helpher interface define
-void helpher_puts(uint8_t* str)
-{
-    putchar(';');
-    putchar(' ');
-    for (;*str != '\0';str++)
-    {
-        if (*str == '\n')
-        {
-            putchar(*str);
-            putchar(';');
-        }
-        else if ((*str == '\r') && (*(str + 1) == '\n'))
-        {
-            continue;
-        }
-        else if ((*str == '\r') && (*(str + 1) != '\n'))
-        {
-            putchar('\n');
-            putchar(';');
-        }
-        else
-        {
-            putchar(*str);
-        }
-    }
-    putchar('\n');
-}
-
-void helpher_convert_pinyin_ids_to_string(
-        pinyin_list* lppinyin_list,
+void _decoder_pinyin_id_to_str(
+        const sgscel_pinyin_lookup_list_t* pinyins_tables,
         uint16_t* pinyin_ids,
         uint16_t size, 
         uint8_t* out)
 {
     int i = 0;
-    pinyin_list* lppinyin_tmp = NULL;
+    int empty_target = 1;
+    const sgscel_pinyin_lookup_list_t* p = NULL;
     
-    for (i = 0;i < size;i++)
-    {
-        for (lppinyin_tmp = lppinyin_list;
-            lppinyin_tmp != NULL;
-            lppinyin_tmp = lppinyin_tmp->pnext)
-        {
-            if (lppinyin_tmp->id == pinyin_ids[i])
-            {
+    for (i = 0;i < size;i++) {
+        for (p = pinyins_tables;p != NULL; p = p->next) {
+            if (p->id == pinyin_ids[i]) {
                 break;
             }
         }
 
-        if (lppinyin_tmp != NULL)
-        {
-            strcat(out, "'");
-            strcat(out, lppinyin_tmp->data);
-        }
-        else
-        {
+        if (p != NULL) {
+            if (empty_target) {
+                empty_target = 0;
+            } else {
+                strcat(out, ",");
+            }
+            strcat(out, p->str);
+        } else {
             break;
         }
     }
 }
 
-int helpher_ucs2_to_utf8_char(unsigned short in, unsigned char * out)
+int _encoder_ucs2_to_utf8(unsigned short in, unsigned char * out)
 {
-    if (in <= 0x007fu)
-    {
+    if (in <= 0x007fu) {
         *out=in;
         return 0;
-    }
-    else if (in >= 0x0080u && in <= 0x07ffu)
-    {
+    } else if (in >= 0x0080u && in <= 0x07ffu) {
         *out = 0xc0 | (in >> 6);
         out ++;
         *out = 0x80 | (in & (0xff >> 2));
         return 0;
-    }
-    else if (in >= 0x0800u)
-    {
+    } else if (in >= 0x0800u) {
         *out = 0xe0 | (in >> 12);
         out ++;
         *out = 0x80 | (in >> 6 & 0x003f);
@@ -135,7 +93,7 @@ int helpher_ucs2_to_utf8_char(unsigned short in, unsigned char * out)
     return 0;
 }
 
-int helpher_ucs2_to_utf8_str(
+int _encoder_ucs2str_to_utf8str(
         uint8_t* in, 
         int insize,
         uint8_t * out)
@@ -148,389 +106,318 @@ int helpher_ucs2_to_utf8_str(
 	*out='\0';
 	memcpy(tmp,in,insize);
 	
-	for (i = 0;i < insize / 2;i++)
-	{
+	for (i = 0;i < insize / 2;i++) {
 		memset(str,0,sizeof(str));
-		helpher_ucs2_to_utf8_char(tmp[i], str);
+		_encoder_ucs2_to_utf8(tmp[i], str);
 		strcat(out,str);
 	}
 	return 0;	
 }
 
-int helpher_fread_u8(uint8_t* u8, FILE* fp)
+int _fread_u8(uint8_t* u8, FILE* fp)
 {
     return fread(u8, 1, 1, fp);
 }
 
-int helpher_fread_u16(uint16_t* u16, FILE* fp)
+int _fread_u16(uint16_t* u16, FILE* fp)
 {
     return fread(u16, 1, 2, fp);
 }
 
-int helpher_fread_str(uint8_t* str, uint16_t size, FILE* fp)
+int _fread_str(uint8_t* str, uint16_t size, FILE* fp)
 {
     return fread(str, 1, size, fp);
 }
 
 ///////////////////////////////////////////////////////////////////////////
-//Global interface define
-pinyin_list* DecodeSGWordPinyin(FILE* fp)
+sgscel_pinyin_lookup_list_t* _load_pinyin_list(FILE* fp)
 {
-    SG_PINYINS_HEADER sg_pinyins_header;
-    SG_PINYIN         sg_pinyin;
-    SG_PINYIN_DEC     sg_pinyin_dec;
-    pinyin_list*      lppinyin_list = NULL;
-    pinyin_list*      lppinyin_next = NULL;
+    sgscel_bin_data_header_t    data;
+    sgscel_bin_pinyin_lookup_t           bin_word;
+    sgscel_pinyin_lookup_t               word;
+    sgscel_pinyin_lookup_list_t*              pinyins_tables = NULL;
+    sgscel_pinyin_lookup_list_t*              tail = NULL;
 
     int id = 0;
-
     uint8_t buffer[64];
+    int nr_bytes = 0;
 
-    int nrOfBytes = 0;
-
-    fseek(fp, SG_OFFSET_PINYINS_HEADER, SEEK_SET);
-    fread(&sg_pinyins_header, SG_PINYINS_HEADER_MAGIC_SIZE, 1, fp);
-    if (memcmp(sg_pinyins_header.magic,
-                SG_PINYINS_HEADER_MAGIC_DATA,
-                SG_PINYINS_HEADER_MAGIC_SIZE) != 0)
-    {
-        printf("Not Sougou words...\n");
+    fseek(fp, OFFSET_BIN_DATA, SEEK_SET);
+    fread(&data, SIZEOF_SGSCEL_BIN_DATA_MAGIC, 1, fp);
+    if (memcmp(data.magic, SGSCEL_BIN_DATA_MAGIC, SIZEOF_SGSCEL_BIN_DATA_MAGIC) != 0) {
+        printf("Error: Not support this dict type!\n");
         return NULL;
     }
-    else
-    {
-        //printf(" * library_pinyin_table:\n");
-    }
 
-    fseek(fp, SG_OFFSET_PINYIN_BEGIN, SEEK_SET);
+    fseek(fp, OFFSET_PINYINS_MAPING, SEEK_SET);
+    pinyins_tables = (sgscel_pinyin_lookup_list_t*)malloc(sizeof(sgscel_pinyin_lookup_list_t));
+    tail = pinyins_tables;
+    tail->next = NULL;
 
-    lppinyin_list = (pinyin_list*)malloc(sizeof(pinyin_list));
-    lppinyin_next = lppinyin_list;
-    lppinyin_next->pnext = NULL;
-
-    //Read words
-    while(1)
-    {
-        memset(&sg_pinyin, 0, sizeof(sg_pinyin));
-        memset(&sg_pinyin_dec, 0, sizeof(sg_pinyin_dec));
+    //Read pinyins_tables
+    while(1) {
+        memset(&bin_word, 0, sizeof(bin_word));
+        memset(&word, 0, sizeof(word));
 
         //Read info
-        nrOfBytes += helpher_fread_u16(&sg_pinyin.code, fp);
-        nrOfBytes += helpher_fread_u16(&sg_pinyin.size, fp);
+        nr_bytes += _fread_u16(&bin_word.code, fp);
+        nr_bytes += _fread_u16(&bin_word.size, fp);
 
-        if ((nrOfBytes <= 0) || (feof(fp)))
-        {
+        if ((nr_bytes <= 0) || (feof(fp))) {
             break;
         }
 
         //Read word
-        nrOfBytes = 0;
-        nrOfBytes += helpher_fread_str(sg_pinyin.pinyin, 
-                sg_pinyin.size,
-                fp);
+        nr_bytes = 0;
+        nr_bytes += _fread_str(bin_word.pinyin, bin_word.size, fp);
 
-        if ((nrOfBytes <= 0) || (feof(fp)))
-        {
+        if ((nr_bytes <= 0) || (feof(fp))) {
             break;
         }
 
         //Convert
-        sg_pinyin_dec.code = sg_pinyin.code;
-        helpher_ucs2_to_utf8_str(sg_pinyin.pinyin, 
-                SG_PINYIN_MAX,
-                sg_pinyin_dec.pinyin);
-        sg_pinyin_dec.size = strlen(sg_pinyin_dec.pinyin);
+        word.code = bin_word.code;
+        _encoder_ucs2str_to_utf8str(bin_word.pinyin, MAX_PINYIN_STRING_LENGTH, word.pinyin);
+        word.size = strlen(word.pinyin);
 
-        lppinyin_next->id    = id;
-        lppinyin_next->data  = strdup(sg_pinyin_dec.pinyin);
+        tail->id    = id;
+        tail->code  = word.code;
+        tail->str   = strdup(word.pinyin);
 
-        if (strcmp(sg_pinyin_dec.pinyin, "zuo") == 0)
-        {
+        if (strcmp(word.pinyin, "zuo") == 0) {
             break;
-        }
-        else
-        {
-            //printf("%s\n",sg_pinyin_dec.pinyin);
-            lppinyin_next->pnext = (pinyin_list*)malloc(sizeof(pinyin_list));
-            lppinyin_next = lppinyin_next->pnext;
-            lppinyin_next->pnext = NULL;
+        } else {
+            //printf("%s\n",word.pinyin);
+            tail->next = (sgscel_pinyin_lookup_list_t*)malloc(sizeof(sgscel_pinyin_lookup_list_t));
+            tail = tail->next;
+            tail->next = NULL;
 
             id++;
         }
     }
 
-    return lppinyin_list;
+    return pinyins_tables;
 }
 
-//#define DEBUG_STEP
-#define CHECK_EOF_ERROR(fp) \
-    if (feof(fp)) \
-    { \
-        break;\
-    }
-
-void DecodeSGWordWords(FILE* fp, uint16_t hz_offset, pinyin_list* lppinyin_list)
+void _pinyin_list_destroy(sgscel_pinyin_lookup_list_t* root)
 {
-    int nrOfBytes = 0;
-    SG_WORDS_HEADER* sg_words_header = 
-        (SG_WORDS_HEADER*)malloc(sizeof(SG_WORDS_HEADER));
-    SG_WORDS_HEADER_DEC* sg_words_header_dec = 
-        (SG_WORDS_HEADER_DEC*)malloc(sizeof(SG_WORDS_HEADER_DEC));
+    sgscel_pinyin_lookup_list_t* p;
 
+    while (root != NULL) {
+        p = root;
+        root = root->next;
+
+        if (p->str) {
+            free(p->str);
+        }
+        free(p);
+    }
+}
+
+
+sgscel_word_t* _load_words(FILE* fp, const sgscel_pinyin_lookup_list_t* pinyins_tables)
+{
+    sgscel_bin_words_header_t rawword;
+    sgscel_word_inl_t word;
+    sgscel_word_t* root = NULL;
+    sgscel_word_t* p;
+    int nr_bytes = 0;
     int i = 0;
     int j = 0;
+    int freq_offs = 0;
 
-    //Jump to words
-    fseek(fp, hz_offset, SEEK_SET);
+    while (!feof(fp)) {
+        memset(&rawword, 0, sizeof(sgscel_bin_words_header_t));
+        memset(&word, 0, sizeof(sgscel_word_t));
 
-    printf("; * library_words_table:\n");
-
-    while(!feof(fp))
-    {
-#ifdef DEBUG_STEP
-        printf("0x%08x\n", ftell(fp));
-        fflush(stdout);
-#endif
-        memset(sg_words_header, 0, sizeof(SG_WORDS_HEADER));
-        memset(sg_words_header_dec, 0, sizeof(SG_WORDS_HEADER_DEC));
-
-        nrOfBytes = helpher_fread_u16(
-                &sg_words_header->words_count,
-                fp);
-        CHECK_EOF_ERROR(fp);
-
-        nrOfBytes = helpher_fread_u16(
-                &sg_words_header->pinyins_count,
-                fp);
-        CHECK_EOF_ERROR(fp);
-
-        sg_words_header->pinyins_count = 
-            (sg_words_header->pinyins_count & 0xFF) / 2;
-
-#ifdef DEBUG_STEP
-        printf("words_count   %d\n", sg_words_header->words_count);
-        printf("pinyins_count %d\n", sg_words_header->pinyins_count);
-        fflush(stdout);
-#endif
-
-        if (sg_words_header->pinyins_count > sizeof(sg_words_header->pinyins_id))
-        {
-            printf("pinyins_id overflow %d", sg_words_header->pinyins_count);
+        nr_bytes = _fread_u16(&rawword.words_count, fp);
+        nr_bytes = _fread_u16(&rawword.pinyins_count, fp);
+        if (feof(fp)) {
             break;
         }
 
-        //Read pinyin
-        for (i = 0;i < sg_words_header->pinyins_count;i++)
-        {
-            nrOfBytes = helpher_fread_u16(
-                    sg_words_header->pinyins_id + i,
-                    fp);
-            CHECK_EOF_ERROR(fp);
+        rawword.pinyins_count = (rawword.pinyins_count & 0xFF) / 2;
+        if (rawword.pinyins_count > sizeof(rawword.pinyins_id)) {
+            break;
         }
 
-        //Convert
-        helpher_convert_pinyin_ids_to_string(lppinyin_list,
-                sg_words_header->pinyins_id,
-                sg_words_header->pinyins_count,
-                sg_words_header_dec->pinyins_id);
+        for (i = 0;i < rawword.pinyins_count;i++) {
+            nr_bytes = _fread_u16(rawword.pinyins_id + i, fp);
+        }
+        if (feof(fp)) {
+            break;
+        }
+        _decoder_pinyin_id_to_str(pinyins_tables, rawword.pinyins_id, rawword.pinyins_count, word.pinyin);
 
         //Read word data
-        for (j = 0;j < sg_words_header->words_count;j++)
-        {
-            nrOfBytes = helpher_fread_u16(
-                    &(sg_words_header->words_len),
-                    fp);
-            CHECK_EOF_ERROR(fp);
-
-            sg_words_header->words_len = 
-                (sg_words_header->words_len & 0xFF);
-
-#ifdef DEBUG_STEP
-            printf("words_len     %d\n", sg_words_header->words_len);
-            fflush(stdout);
-#endif
-
-            if (sg_words_header->words_count > sizeof(sg_words_header->words_data))
-            {
-                printf("words_data overflow %d", sg_words_header->words_count);
+        for (j = 0;j < rawword.words_count;j++) {
+            nr_bytes = _fread_u16(&(rawword.words_len), fp);
+            if (feof(fp)) {
                 break;
             }
 
-            nrOfBytes = helpher_fread_str(
-                    sg_words_header->words_data,
-                    sg_words_header->words_len,
-                    fp);
-            CHECK_EOF_ERROR(fp);
+            rawword.words_len = (rawword.words_len & 0xFF);
+            if (rawword.words_count > sizeof(rawword.words_data)) {
+                break;
+            }
+            nr_bytes = _fread_str(rawword.words_data, rawword.words_len, fp);
+            if (feof(fp)) {
+                break;
+            }
 
+            nr_bytes = _fread_str(rawword.words_freq, sizeof(rawword.words_freq), fp);
+            if (feof(fp)) {
+                break;
+            }
 
-#ifdef DEBUG_STEP
-            printf("Read freq\n");
-            fflush(stdout);
-#endif
+            word.frequency = 0;
+            for (freq_offs = 11;freq_offs >= 0;freq_offs--) {
+                word.frequency = word.frequency * 256 + rawword.words_freq[freq_offs];
+            }
 
-            nrOfBytes = helpher_fread_str(
-                    sg_words_header->words_freq,
-                    sizeof(sg_words_header->words_freq),
-                    fp);
-            CHECK_EOF_ERROR(fp);
+            _encoder_ucs2str_to_utf8str(rawword.words_data, rawword.words_len, word.string);
 
-            //Convert
-            helpher_ucs2_to_utf8_str(sg_words_header->words_data,
-                    sg_words_header->words_len,
-                    sg_words_header_dec->words_data);
-            sg_words_header_dec->words_len = strlen(sg_words_header_dec->words_data);
-
-
-            //Print
-            printf("%s ", sg_words_header_dec->pinyins_id);
-            printf("%s\n", sg_words_header_dec->words_data);
+            //append to list
+            if (root == NULL) {
+                root = (sgscel_word_t*)malloc(sizeof(sgscel_word_t));
+                p = root;
+            } else {
+                p->next = (sgscel_word_t*)malloc(sizeof(sgscel_word_t));
+                p = p->next;
+            }
+            memset(p, 0, sizeof(sgscel_word_t));
+            p->pinyin = strdup(word.pinyin);
+            p->string = strdup(word.string);
+            p->frequency = word.frequency;
         }
     }
 
-    free(sg_words_header);
-    free(sg_words_header_dec);
+    return root;
+
+ERROR:
+    while (root) {
+        p = root;
+        root = root->next;
+        if (p->pinyin) {
+            free(p->pinyin);
+        }
+        if (p->string) {
+            free(p->string);
+        }
+        free(p);
+    }
+
+    return NULL;
 }
 
-void DecodeSGDict(FILE* fp)
+sgscel_db_t* sgscel_load(const char* dbname)
 {
-    SG_FILE_HEADER              sg_header;
-    SG_LIBRARY_HEADER           sg_lib_header;
-    SG_LIBRARY_HEADER_DECODER   sg_lib_header_dec;
-    pinyin_list*                lppinyin_list = NULL;
-    pinyin_list*                lppinyin_next = NULL;
+    FILE* fp;
+    sgscel_db_t*                    result;
+    sgscel_bin_filehdr_t            scel_hdr;
+    sgscel_bin_fileinfo_t           scel_info;
+    sgscel_fileinfo_t               info;
+    sgscel_pinyin_lookup_list_t*    pinyins = NULL;
+    sgscel_word_t*                  words = NULL;
     uint16_t hz_offset = 0;
 
-    //File header
-    fseek(fp, SG_OFFSET_FILE_HEADER, SEEK_SET);
-    fread(&sg_header, SG_HEADER_MAGIC_SIZE, 1, fp);
-    if ((memcmp(sg_header.magic, SG_HEADER_MAGIC_DATA1, SG_HEADER_MAGIC_SIZE) != 0) &&
-        (memcmp(sg_header.magic, SG_HEADER_MAGIC_DATA2, SG_HEADER_MAGIC_SIZE) != 0))
-    {
-        printf("Not Sougou dict...\n");
-        return;
+    fp = fopen(dbname, "rb");
+    if (fp == NULL) {
+        perror("Can't open file.");
+        return NULL;
+    }
+
+    fseek(fp, OFFSET_BIN_FILE_HEADER, SEEK_SET);
+    fread(&scel_hdr, SIZEOF_FILE_MAGIC, 1, fp);
+    if ((memcmp(scel_hdr.magic, SGSCEL_FILE_MAGIC1, SIZEOF_FILE_MAGIC) != 0) &&
+        (memcmp(scel_hdr.magic, SGSCEL_FILE_MAGIC2, SIZEOF_FILE_MAGIC) != 0)) {
+        printf("Error: not sougou dict...\n");
+        fclose(fp);
+        fp = NULL;
+        return NULL;
     }
     
+    fseek(fp, OFFSET_BIN_INFO_NAME, SEEK_SET);
+    fread(&scel_info.name, SIZEOF_BIN_INFO_NAME, 1, fp);
+    _encoder_ucs2str_to_utf8str(scel_info.name, SIZEOF_BIN_INFO_NAME, info.name);
+
+    fseek(fp, OFFSET_BIN_INFO_CATEGORY, SEEK_SET);
+    fread(&scel_info.category, SIZEOF_BIN_INFO_CATEGORY, 1, fp);
+    _encoder_ucs2str_to_utf8str(scel_info.category, SIZEOF_BIN_INFO_CATEGORY, info.category);
+
+    fseek(fp, OFFSET_BIN_INFO_DESCRIPTION, SEEK_SET);
+    fread(&scel_info.description, SIZEOF_BIN_INFO_DESCRIPTION, 1, fp);
+    _encoder_ucs2str_to_utf8str(scel_info.description, SIZEOF_BIN_INFO_DESCRIPTION, info.description);
+
+    fseek(fp, OFFSET_BIN_INFO_EXAMPLE, SEEK_SET);
+    fread(&scel_info.example, SIZEOF_BIN_INFO_EXAMPLE, 1, fp);
+    _encoder_ucs2str_to_utf8str(scel_info.example, SIZEOF_BIN_INFO_EXAMPLE, info.example);
+
     ///////////////////////////////////////////////////////////////////////////
-    //Library name
-    fseek(fp, SG_OFFSET_LIBRARY_HEADER, SEEK_SET);
-    fread(&sg_lib_header.library_name, SG_LIBRARY_HEADER_SIZE, 1, fp);
-
-    //Library category
-    fseek(fp, SG_OFFSET_LIBRARY_CATEGORY, SEEK_SET);
-    fread(&sg_lib_header.library_category, SG_LIBRARY_CATEGORY_SIZE, 1, fp);
-
-    //Library information
-    fseek(fp, SG_OFFSET_LIBRARY_INFORMATION, SEEK_SET);
-    fread(&sg_lib_header.library_information, SG_LIBRARY_INFORMATION_SIZE, 1, fp);
-
-    //Library example
-    fseek(fp, SG_OFFSET_LIBRARY_EXAMPLE, SEEK_SET);
-    fread(&sg_lib_header.library_example, SG_LIBRARY_EXAMPLE_SIZE, 1, fp);
-
-
-    //Convert to utf-8
-    helpher_ucs2_to_utf8_str(
-            sg_lib_header.library_name,
-            SG_LIBRARY_HEADER_SIZE,
-            sg_lib_header_dec.library_name);
-
-    helpher_ucs2_to_utf8_str(
-            sg_lib_header.library_category,
-            SG_LIBRARY_CATEGORY_SIZE,
-            sg_lib_header_dec.library_category);
-
-    helpher_ucs2_to_utf8_str(
-            sg_lib_header.library_information,
-            SG_LIBRARY_INFORMATION_SIZE,
-            sg_lib_header_dec.library_information);
-
-    helpher_ucs2_to_utf8_str(
-            sg_lib_header.library_example,
-            SG_LIBRARY_EXAMPLE_SIZE,
-            sg_lib_header_dec.library_example);
-
-
-    printf("; * library_name        : %s\n", sg_lib_header_dec.library_name);
-    printf("; * library_category    : %s\n", sg_lib_header_dec.library_category);
-    printf("; * library_information : %s\n", sg_lib_header_dec.library_information);
-    printf("; * library_example:\n");
-    
-    helpher_puts(sg_lib_header_dec.library_example);
-
-
-    lppinyin_list = DecodeSGWordPinyin(fp);
-    if (lppinyin_list == NULL)
-    {
-        return;
+    pinyins = _load_pinyin_list(fp);
+    if (pinyins == NULL) {
+        printf("Error: load_pinyin_list\n");
+        fclose(fp);
+        fp = NULL;
+        return NULL;
     }
 
-    if (sg_header.magic[4] == 0x44)
-    {
+    if (scel_hdr.magic[4] == 0x44) {
         hz_offset = 0x2628;
-    }
-    else if (sg_header.magic[4] == 0x45)
-    {
+    } else if (scel_hdr.magic[4] == 0x45) {
         hz_offset = 0x26c4;
     }
-    else
-    {
-        return;
+
+    fseek(fp, hz_offset, SEEK_SET);
+    words = _load_words(fp, pinyins);
+    _pinyin_list_destroy(pinyins);
+    if (words == NULL) {
+        printf("Error: nothing load\n");
+        fclose(fp);
+        fp = NULL;
+        return NULL;
     }
 
-    DecodeSGWordWords(fp, hz_offset, lppinyin_list);
+    result = (sgscel_db_t*)malloc(sizeof(sgscel_db_t));
+    result->file        = strdup(dbname);
+    result->name        = strdup(info.name);
+    result->category    = strdup(info.category);
+    result->description = strdup(info.description);
+    result->example     = strdup(info.example);
+    result->words = words;
 
-    if (lppinyin_list->pnext == NULL)
-    {
-        free(lppinyin_list->data);
-        free(lppinyin_list);
-    }
-    else
-    {
-        lppinyin_next = lppinyin_list->pnext;
-        while(lppinyin_next != NULL)
-        {
-            free(lppinyin_list->data);
-            free(lppinyin_list);
-
-            lppinyin_list = lppinyin_next;
-            lppinyin_next = lppinyin_next->pnext;
-        }
-    }
+    fclose(fp);
+    fp = NULL;
+    return result;
 }
 
-/**
- * @brief program entry.
- * @details
- *        The first function call by systm.
- * @param[in]   argc number of command line arguments.
- * @param[in]   argv array of command line arguments.
- * @return      any int value.
- */
-int main(int argc, const char* argv[])
+void sgscel_destroy(sgscel_db_t* db)
 {
-    FILE* fp = NULL;
-    //Adding source below.
-    if (argc != 2)
-    {
-        printf("Need input file!\n");
-        return -1;
-    }
-    else
-    {
-        fp = fopen(argv[1], "rb");
-        if (fp == NULL)
-        {
-            perror("Can't open file.");
-            return -1;
-        }
-        else
-        {
-            DecodeSGDict(fp);
-            fclose(fp);
-            fp = NULL;
-        }
-    }
+    sgscel_word_t* p;
 
-    return 0;
+    while (db->words != NULL) {
+        p = db->words;
+        db->words = db->words->next;
+        if (p->pinyin) {
+            free(p->pinyin);
+        }
+        if (p->string) {
+            free(p->string);
+        }
+        free(p);
+    }
+    if (db->name) {
+        free(db->name);
+    }
+    if (db->category) {
+        free(db->category);
+    }
+    if (db->description) {
+        free(db->description);
+    }
+    if (db->example) {
+        free(db->example);
+    }
+    free(db);
 }
 
