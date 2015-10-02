@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "sougou_dict.h"
+#include "libsgscel.h"
 
 ///////////////////////////////////////////////////////////////////////////
 //Helpher interface declare
