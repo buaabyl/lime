@@ -1,0 +1,34 @@
+#include "winuser.h"
+
+//@title VERSIONINFO resource
+//@url https://msdn.microsoft.com/library/aa381058
+1 VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS 0x40004L
+ FILETYPE 0x3L
+ FILESUBTYPE 0xbL
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404b0"
+        BEGIN
+            VALUE "CompanyName", "noname"
+            VALUE "FileDescription", "Windows Input Bus"
+            VALUE "FileVersion", "1.0.0.1"
+            VALUE "InternalName", "gplime.dll"
+            VALUE "LegalCopyright", "LGPLv2"
+            VALUE "OriginalFilename", "gplime.dll"
+            VALUE "ProductName", "Windows Input Bus"
+            VALUE "ProductVersion", "1.0.0.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        //langID 0x804: Simplified Chinese
+        //charsetID 1200: unicode
+        VALUE "Translation", 0x804, 1200
+    END
+END
