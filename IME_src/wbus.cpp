@@ -73,6 +73,8 @@ BOOL CwbusApp::InitInstance()
 	CWinApp::InitInstance();
     OutputDebugString(L"InitInstance BEGIN\n");
 
+    //@title UniversalInject
+    //@url https://github.com/dwendt/UniversalInject/blob/master/UInjectIME/main.cpp
     WNDCLASSEX	wc;
     wc.cbSize			= sizeof(WNDCLASSEX);
     wc.style			= CS_VREDRAW | CS_HREDRAW | CS_IME;
