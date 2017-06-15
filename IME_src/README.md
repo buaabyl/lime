@@ -1,4 +1,4 @@
-﻿# gplime
+# gplime
 
 ## Warning
 1. main dialog for IME __must__ not using MFC based dialog or windows!!!
@@ -25,6 +25,25 @@ Step:
 资源里`FileDescription` 这一项会在输入法任务栏里显示的，不要乱写。
 第一次加载调用会`ImeInquire`函数的。
 
+## gplime-0.1.0-2014
+Modify dialog create.
+
+## gplime-0.2.0-2017
+Learning `Machine Learning` and `Deep Learning`, 
+Try to rewrite the old input method for fun.
+
+Stage1:
+1. Seperate algorithm and UI.
+2. Seperate to server and client.
+3. Rewrite to HMM or CRF algorithm.
+4. Embedded luajit and duktape(javascript) extension interface.
+5. Support windows7 only, drop windows xp test.
+6. Push main program to GitHub as MIT license.
+7. Push model as GPLv3 license, because the license of most corpus data for research only.
+
+Stage2:
+1. Using deep learning algorithm.
+2. Digging Google's cosine relation.
 
 
 
