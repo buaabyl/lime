@@ -3,6 +3,10 @@ I have wrote this library in 2012, learning NLP at that time.
 Reading source code of sunpinyin and Apache lucene,
 expecting build a simplest and protable Seg split library.
 
+- @ref sunpinyin
+- @ref lucene
+- @ref rime
+- @ref unspim
 
 ## Feature
 1. Opensource and GPL license.
