@@ -1,0 +1,20 @@
+OBJS_PATH 	= objs
+CFLAGS		= /nologo /I ../include /I .. /Fo$(OBJS_PATH)/  /c
+LDFLAGS		= /nologo
+
+MAIN_OBJS   = $(OBJS_PATH)/main.obj $(OBJS_PATH)/lime_pinyin.obj $(OBJS_PATH)/lime_syllable.obj
+
+all:$(OBJS_PATH) main.exe
+
+$(OBJS_PATH):
+	mkdir $(OBJS_PATH)
+
+main.exe:$(MAIN_OBJS)
+	link $(LDFLAGS) /out:main.exe $(MAIN_OBJS)
+
+{../test}.c{$(OBJS_PATH)}.obj:
+	cl $(CFLAGS) $<
+
+{../source}.c{$(OBJS_PATH)}.obj:
+	cl $(CFLAGS) $<
+

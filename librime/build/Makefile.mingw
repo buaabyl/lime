@@ -1,0 +1,20 @@
+OBJS_PATH	= objs
+CFLAGS		= -I ../include -c
+LDFLAGS		= 
+
+VPATH		+= ../source
+VPATH		+= ../test
+
+all:$(OBJS_PATH) main.exe
+
+$(OBJS_PATH):
+	mkdir $@
+
+main.exe:$(OBJS_PATH)/main.o $(OBJS_PATH)/lime_pinyin.o $(OBJS_PATH)/lime_syllable.o
+	gcc $(LDFLAGS) -o $@ $^
+
+$(OBJS_PATH)/%.o:%.c
+	gcc $(CFLAGS) -o $@ $<
+
+
+
