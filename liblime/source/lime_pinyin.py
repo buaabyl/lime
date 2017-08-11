@@ -1,6 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
-
+# 
+# 
+# https://code.google.com/archive/p/hslinuxextra/downloads
+# ibus-pinyin 在某个特定版本移除了这个db-android词库的支持
+# 
+# https://github.com/ibus/ibus-pinyin/commit/d2b27c5dc5ad1070f502768a32df2792c55b435d
+# Integrates pyzy.
+# BUG=None
+# TEST=None at this moment...
+# 
+# Review URL: https://codereview.appspot.com/6253043
+# Patch from Hiroshi Sumita <hsumita@chromium.org>.
+# 
+# 1 parent f01f78c commit d2b27c5dc5ad1070f502768a32df2792c55b435d @hsumita hsumita committed with phuang on Jul 11, 2012
+# 
+#
+#   以下的拼音映射关系和原始的那个 android.db 能对应上
+# 
 import sys
 import os
 import sqlite3
@@ -39,6 +56,12 @@ TPL_HEADER = '''\
  *      so the license must be GPL or LGPL
  *      implement it in flex+bison
  *
+ *  2017.04.16
+ *      rewrite by hand, remove flex and bison
+ *      optimize
+ *
+ *  2017.08.01
+ *      optimize
  */
 /***************************************************/
 /*       !!! DO NOT MODIFY THIS FILE !!!           */ 

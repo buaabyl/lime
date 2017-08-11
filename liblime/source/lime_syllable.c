@@ -26,13 +26,14 @@
 #include "lime_syllable.h"
 
 
+////////////////////////////////////////////////////////////////////////////////
 //@brief    pair consonant with vowel
 //@retval   0   untouch
 //@retval   1   modify
 static int _lime_parser(lime_syllable_t* sequences);
 
 
-
+////////////////////////////////////////////////////////////////////////////////
 lime_syllable_t* lime_lexical_analysis_positive(const char* keys)
 {
     int i;
@@ -43,7 +44,6 @@ lime_syllable_t* lime_lexical_analysis_positive(const char* keys)
     lime_syllable_t* p = NULL;
 
     n = strlen(keys);
-    printf("input: %s\n", keys);
 
     // range: [i, j)
     i = 0;

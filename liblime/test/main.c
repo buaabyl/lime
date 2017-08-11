@@ -26,8 +26,11 @@
 #include <inttypes.h>
 #include "lime_pinyin.h"
 #include "lime_syllable.h"
+#include "lime_search.h"
+#include "lime_conv.h"
 
-int test(const char* s)
+
+int test_parser(const char* s)
 {
     lime_syllable_t* result;
 
@@ -47,12 +50,53 @@ int test(const char* s)
     return 0;
 }
 
+int test_dict(const char* keys)
+{
+    lime_syllable_t* sequences;
+    lime_search_handle_t* dicts;
+    lime_candidate_t* candidates;
+
+    dicts = lime_search_open("data");
+    if (dicts == NULL) {
+        printf("Missing database\n");
+        return -1;
+    }
+
+    sequences = lime_lexical_analysis_positive(keys);
+    lime_parser(sequences);
+    lime_syllable_dump(sequences);
+
+    candidates = lime_search_candidates(dicts, sequences);
+    if (candidates != NULL) {
+        lime_candidates_dump(candidates);
+        lime_candidates_destroy(candidates);
+        candidates = NULL;
+    }
+
+    lime_syllable_destroy(sequences);
+    sequences = NULL;
+
+    lime_search_close(dicts);
+    dicts = NULL;
+
+    printf("\n");
+
+    return 0;
+}
+
 int main(int argc, char* argv[])
 {
-    test("ceshiyxnn");
+    test_parser("ceshiyxnn");
     printf("\n");
-    test("yuhycjnanyjcjl");
+    test_parser("yuhycjnanyjcjl");
     printf("\n");
+
+
+    test_dict("lg");
+    test_dict("lgh");
+    test_dict("lghl");
+    test_dict("liangghl");
+    test_dict("lghlmcl");
 
     return 0;
 }

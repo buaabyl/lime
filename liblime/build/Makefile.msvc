@@ -1,8 +1,13 @@
 OBJS_PATH 	= objs
-CFLAGS		= /nologo /I ../include /I .. /Fo$(OBJS_PATH)/  /c
+CFLAGS		= /nologo /I ../include /I .. /I ../libsqlite3 /Fo$(OBJS_PATH)/  /c
 LDFLAGS		= /nologo
 
-MAIN_OBJS   = $(OBJS_PATH)/main.obj $(OBJS_PATH)/lime_pinyin.obj $(OBJS_PATH)/lime_syllable.obj
+MAIN_OBJS   = $(OBJS_PATH)/main.obj \
+			  $(OBJS_PATH)/lime_pinyin.obj \
+			  $(OBJS_PATH)/lime_syllable.obj \
+			  $(OBJS_PATH)/lime_search.obj \
+			  $(OBJS_PATH)/lime_conv.obj \
+			  $(OBJS_PATH)/sqlite3.obj
 
 all:$(OBJS_PATH) main.exe
 
@@ -16,5 +21,8 @@ main.exe:$(MAIN_OBJS)
 	cl $(CFLAGS) $<
 
 {../source}.c{$(OBJS_PATH)}.obj:
+	cl $(CFLAGS) $<
+
+{../libsqlite3}.c{$(OBJS_PATH)}.obj:
 	cl $(CFLAGS) $<
 

@@ -25,6 +25,12 @@
  *      so the license must be GPL or LGPL
  *      implement it in flex+bison
  *
+ *  2017.04.16
+ *      rewrite by hand, remove flex and bison
+ *      optimize
+ *
+ *  2017.08.01
+ *      optimize
  */
 /***************************************************/
 /*       !!! DO NOT MODIFY THIS FILE !!!           */ 

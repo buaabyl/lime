@@ -59,6 +59,11 @@ lime_syllable_t* lime_lexical_analysis_reverse(const char* keys);
 lime_syllable_t* lime_lexical_analysis_max_tokens(const char* keys);
 
 
+//TODO:
+//@brief    pinyin keys sequence lexical ananlysis, max Sigma(-PlogP)
+lime_syllable_t* lime_lexical_analysis_max_entropy(const char* keys);
+
+
 //@brief    pair consonant with vowel
 //@descriptions
 //          modify list directly
